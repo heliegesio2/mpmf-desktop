@@ -206,6 +206,26 @@ export async function atualizarEstoqueProduto(
   return rows[0] ?? null;
 }
 
+/**
+ * Dá baixa no estoque dos itens vendidos ao fechar a venda. `GREATEST(0, ...)`
+ * para não deixar o estoque negativo. Não há livro de vendas — é o único
+ * registro que a venda deixa.
+ */
+export async function baixarEstoqueVenda(
+  _empresaId: number,
+  itens: { id: number; quantidade: number }[]
+): Promise<void> {
+  const pool = await getPool();
+  for (const it of itens) {
+    if (!Number.isInteger(it.id) || !(it.quantidade > 0)) continue;
+    await pool.query(
+      `UPDATE produto SET estoque = GREATEST(0, estoque - $3), alterado_em = now()
+        WHERE id = $1 AND empresa_id = $2`,
+      [it.id, EMPRESA_ID, it.quantidade]
+    );
+  }
+}
+
 export async function fotoProduto(_empresaId: number, id: number): Promise<string | null> {
   const pool = await getPool();
   const { rows } = await pool.query<{ foto: string | null }>(

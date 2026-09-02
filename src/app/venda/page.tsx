@@ -506,10 +506,25 @@ export default function Venda() {
     fecharNovo();
   }
 
-  function fechar() {
+  async function fechar() {
     if (!podeFinalizar || finalizando) return;
     setFinalizando(true);
     setErro(false);
+
+    // dá baixa no estoque — a venda não tem outro registro. Uma falha aqui
+    // não desfaz a venda (o lojista reconta o estoque depois pela foto).
+    try {
+      await fetch("/api/venda/baixar-estoque", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itens: itens.map((i) => ({ id: i.produto.id, quantidade: i.quantidade })),
+        }),
+      });
+    } catch (e) {
+      console.error("Não foi possível baixar o estoque da venda:", e);
+    }
+
     reconhecimento.current?.abort();
     setOuvindo(false);
     setFinalizada({ itens: [...itens], partes: [...partes] });

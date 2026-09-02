@@ -37,6 +37,12 @@ Sem testes, sem linter (eslint desligado no build).
   (existe como no-op pra compatibilidade). Mudança de schema entra direto no `schema.ts`.
 - **`config`** é uma tabela chave/valor: `pin_hash`, `pix_chave`, `pix_nome`, `cidade`,
   `nome_loja`. `lerConfig`/`gravarConfig` em `db.ts`.
+- **Baixa de estoque na venda**: `fechar()` em `/venda` faz `POST /api/venda/baixar-estoque`
+  com o carrinho → `baixarEstoqueVenda` (`db.ts`, `UPDATE … estoque = GREATEST(0, estoque - qtd)`
+  por item, nunca negativo). Não bloqueia a venda se falhar. Espelha o web.
+- **Campo estoque**: o banco devolve `numeric` como `"3.000"`. `FormularioProduto` carrega
+  `estoque` como `String(Number(p.estoque))` e manda de volta como **texto cru** — nunca
+  `moedaParaNumero` (apaga o ponto: `"3.000"` → `3000`).
 
 ## Empacotamento (Electron)
 
