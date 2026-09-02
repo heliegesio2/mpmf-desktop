@@ -214,16 +214,20 @@ export async function atualizarEstoqueProduto(
 export async function baixarEstoqueVenda(
   _empresaId: number,
   itens: { id: number; quantidade: number }[]
-): Promise<void> {
+): Promise<Record<number, number>> {
   const pool = await getPool();
+  const restante: Record<number, number> = {};
   for (const it of itens) {
     if (!Number.isInteger(it.id) || !(it.quantidade > 0)) continue;
-    await pool.query(
+    const { rows } = await pool.query<{ id: number; estoque: string }>(
       `UPDATE produto SET estoque = GREATEST(0, estoque - $3), alterado_em = now()
-        WHERE id = $1 AND empresa_id = $2`,
+        WHERE id = $1 AND empresa_id = $2
+        RETURNING id, estoque`,
       [it.id, EMPRESA_ID, it.quantidade]
     );
+    if (rows[0]) restante[Number(rows[0].id)] = Number(rows[0].estoque);
   }
+  return restante;
 }
 
 export async function fotoProduto(_empresaId: number, id: number): Promise<string | null> {

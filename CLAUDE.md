@@ -38,8 +38,13 @@ Sem testes, sem linter (eslint desligado no build).
 - **`config`** é uma tabela chave/valor: `pin_hash`, `pix_chave`, `pix_nome`, `cidade`,
   `nome_loja`. `lerConfig`/`gravarConfig` em `db.ts`.
 - **Baixa de estoque na venda**: `fechar()` em `/venda` faz `POST /api/venda/baixar-estoque`
-  com o carrinho → `baixarEstoqueVenda` (`db.ts`, `UPDATE … estoque = GREATEST(0, estoque - qtd)`
-  por item, nunca negativo). Não bloqueia a venda se falhar. Espelha o web.
+  com o carrinho → `baixarEstoqueVenda` (`db.ts`, `UPDATE … estoque = GREATEST(0, estoque - qtd)
+  RETURNING id, estoque` por item, nunca negativo). Não bloqueia a venda se falhar. Devolve
+  `estoques` ({id: novoEstoque}); o comprovante mostra o estoque restante de cada item à
+  direita, em vermelho (`.col-direita`/`.estoque-restante`). Espelha o web.
+- **`/produtos`**: o chip de estoque (`.botao-estoque`, âmbar sólido quando baixo) abre um
+  campo inline ao tocar → `PATCH /api/produtos/:id {estoque}` → `atualizarEstoqueProduto`.
+  O link "📦 Atualizar estoque por foto" foi removido (é visão, não veio pro offline).
 - **Campo estoque**: o banco devolve `numeric` como `"3.000"`. `FormularioProduto` carrega
   `estoque` como `String(Number(p.estoque))` e manda de volta como **texto cru** — nunca
   `moedaParaNumero` (apaga o ponto: `"3.000"` → `3000`).
