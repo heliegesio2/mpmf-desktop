@@ -1,0 +1,59 @@
+{
+  "name": "pdvja-desktop",
+  "productName": "PDV Ja",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PDV Já — versão para computador, funciona sem internet",
+  "author": "PDV Já",
+  "main": "electron/main.js",
+  "scripts": {
+    "next:dev": "next dev -p 3131",
+    "next:build": "next build",
+    "dev": "concurrently -k \"npm:next:dev\" \"wait-on http://localhost:3131 && cross-env ELECTRON_START_URL=http://localhost:3131 electron .\"",
+    "start": "cross-env NODE_ENV=production electron .",
+    "dist": "npm run next:build && electron-builder --win --x64",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "@electric-sql/pglite": "^0.2.17",
+    "next": "15.5.23",
+    "qrcode": "^1.5.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.0.0",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.pdvja.desktop",
+    "productName": "PDV Ja",
+    "asar": false,
+    "files": [
+      "electron/**",
+      { "from": ".next/standalone", "to": "." },
+      { "from": ".next/static", "to": ".next/static" },
+      "package.json"
+    ],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PDV Ja"
+    }
+  }
+}
