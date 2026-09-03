@@ -240,6 +240,93 @@ export async function baixarEstoqueVenda(
   return restante;
 }
 
+// ---------- vendas (registro pós-fechamento — o /vendas) ----------
+
+export type ItemVendaEntrada = {
+  id?: number | null;
+  nome: string;
+  quantidade: number;
+  precoUnit: number;
+  tipoVenda?: string;
+};
+export type ParteVendaEntrada = { forma: string; valor: number };
+
+/** Grava uma venda concluída (cabeçalho + itens + pagamentos). `data` = data local do balcão. */
+export async function registrarVenda(
+  _empresaId: number,
+  dados: { data?: string | null; itens: ItemVendaEntrada[]; partes: ParteVendaEntrada[] }
+): Promise<number> {
+  const pool = await getPool();
+  const total = dados.itens.reduce((s, it) => s + it.quantidade * it.precoUnit, 0);
+
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO venda (empresa_id, data, total, qtd_itens)
+     VALUES ($1, COALESCE($2::date, CURRENT_DATE), $3, $4) RETURNING id`,
+    [EMPRESA_ID, dados.data || null, Number(total.toFixed(2)), dados.itens.length]
+  );
+  const vendaId = rows[0].id;
+
+  for (const it of dados.itens) {
+    await pool.query(
+      `INSERT INTO venda_item (venda_id, produto_id, nome, quantidade, preco_unit, tipo_venda)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        vendaId,
+        Number.isInteger(it.id as number) ? it.id : null,
+        String(it.nome ?? "").slice(0, 200) || "Item",
+        it.quantidade,
+        it.precoUnit,
+        it.tipoVenda || "unidade",
+      ]
+    );
+  }
+  for (const p of dados.partes) {
+    if (!(p.valor > 0)) continue;
+    await pool.query(
+      `INSERT INTO venda_pagamento (venda_id, forma, valor) VALUES ($1, $2, $3)`,
+      [vendaId, String(p.forma ?? "").slice(0, 20) || "dinheiro", p.valor]
+    );
+  }
+  return Number(vendaId);
+}
+
+export type VendaResumo = {
+  id: number;
+  data: string;
+  criado_em: string;
+  total: number;
+  qtd_itens: number;
+  pagamentos: { forma: string; valor: number }[];
+};
+
+/** Vendas entre duas datas locais (inclusivo), mais recentes primeiro. */
+export async function listarVendas(
+  _empresaId: number,
+  de: string,
+  ate: string
+): Promise<VendaResumo[]> {
+  const pool = await getPool();
+  const { rows } = await pool.query<VendaResumo>(
+    `SELECT v.id,
+            v.data::text AS data,
+            v.criado_em,
+            v.total::float8 AS total,
+            v.qtd_itens,
+            COALESCE(
+              (SELECT json_agg(
+                        json_build_object('forma', p.forma, 'valor', p.valor::float8)
+                        ORDER BY p.id)
+                 FROM venda_pagamento p WHERE p.venda_id = v.id),
+              '[]'::json
+            ) AS pagamentos
+       FROM venda v
+      WHERE v.empresa_id = $1 AND v.data >= $2::date AND v.data <= $3::date
+      ORDER BY v.criado_em DESC`,
+    [EMPRESA_ID, de, ate]
+  );
+  return rows;
+}
+
 export async function fotoProduto(_empresaId: number, id: number): Promise<string | null> {
   const pool = await getPool();
   const { rows } = await pool.query<{ foto: string | null }>(

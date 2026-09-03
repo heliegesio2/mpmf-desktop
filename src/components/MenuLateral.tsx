@@ -10,6 +10,7 @@ import { esquecerCarrinho, useCarrinho } from "@/lib/carrinho";
 const ITENS = [
   { href: "/", rotulo: "Consultar preço", descricao: "Fale ou digite" },
   { href: "/venda", rotulo: "Venda", descricao: "Ditar itens e fechar" },
+  { href: "/vendas", rotulo: "Vendas do dia", descricao: "Histórico por data, valor e pagamento" },
   { href: "/produtos", rotulo: "Produtos", descricao: "Incluir, alterar, excluir" },
   { href: "/caixa", rotulo: "Caixa", descricao: "Valor final do dia" },
   { href: "/gastos", rotulo: "Gastos", descricao: "Contas pagas da loja" },

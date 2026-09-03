@@ -37,11 +37,14 @@ Sem testes, sem linter (eslint desligado no build).
   (existe como no-op pra compatibilidade). Mudança de schema entra direto no `schema.ts`.
 - **`config`** é uma tabela chave/valor: `pin_hash`, `pix_chave`, `pix_nome`, `cidade`,
   `nome_loja`. `lerConfig`/`gravarConfig` em `db.ts`.
-- **Baixa de estoque na venda**: `fechar()` em `/venda` faz `POST /api/venda/baixar-estoque`
-  com o carrinho → `baixarEstoqueVenda` (`db.ts`, `UPDATE … estoque = GREATEST(0, estoque - qtd)
-  RETURNING id, estoque` por item, nunca negativo). Não bloqueia a venda se falhar. Devolve
-  `estoques` ({id: novoEstoque}); o comprovante mostra o estoque restante de cada item à
-  direita, em vermelho (`.col-direita`/`.estoque-restante`). Espelha o web.
+- **Venda concluída**: `fechar()` em `/venda` faz `POST /api/venda/concluir` com o carrinho +
+  `data` (data local) → (1) `registrarVenda` grava `venda`+`venda_item`+`venda_pagamento`;
+  (2) `baixarEstoqueVenda` (`GREATEST(0, estoque - qtd)`, nunca negativo). Ambos não-bloqueantes.
+  Devolve `estoques` ({id: {estoque, critico}}); o comprovante mostra um chip de estoque embaixo
+  do nome de cada item (`.chip-estoque-venda`, vermelho só se crítico). Espelha o web.
+- **`/vendas`**: histórico. Dois `<input type="date">` (De/Até, padrão = hoje local),
+  `GET /api/vendas?de=&ate=` → `listarVendas` (filtra por `venda.data`, `json_agg` dos
+  pagamentos). No menu como "Vendas do dia".
 - **`/produtos`**: o chip de estoque (`.botao-estoque`, âmbar sólido quando baixo) abre um
   campo inline ao tocar → `PATCH /api/produtos/:id {estoque}` → `atualizarEstoqueProduto`.
   O link "📦 Atualizar estoque por foto" foi removido (é visão, não veio pro offline).

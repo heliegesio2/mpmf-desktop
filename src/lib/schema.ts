@@ -79,6 +79,36 @@ CREATE TABLE IF NOT EXISTS custo (
   criado_em    timestamptz NOT NULL DEFAULT now()
 );
 
+-- registro de vendas (o /vendas). "data" e a data LOCAL do balcao.
+CREATE TABLE IF NOT EXISTS venda (
+  id         bigserial PRIMARY KEY,
+  empresa_id bigint NOT NULL DEFAULT 1,
+  data       date NOT NULL DEFAULT CURRENT_DATE,
+  total      numeric(10,2) NOT NULL DEFAULT 0,
+  qtd_itens  integer NOT NULL DEFAULT 0,
+  criado_em  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_venda_empresa_data ON venda (empresa_id, data DESC, criado_em DESC);
+
+CREATE TABLE IF NOT EXISTS venda_item (
+  id         bigserial PRIMARY KEY,
+  venda_id   bigint NOT NULL REFERENCES venda(id) ON DELETE CASCADE,
+  produto_id bigint,
+  nome       text NOT NULL,
+  quantidade numeric(12,3) NOT NULL,
+  preco_unit numeric(10,2) NOT NULL,
+  tipo_venda text NOT NULL DEFAULT 'unidade'
+);
+CREATE INDEX IF NOT EXISTS idx_venda_item_venda ON venda_item (venda_id);
+
+CREATE TABLE IF NOT EXISTS venda_pagamento (
+  id       bigserial PRIMARY KEY,
+  venda_id bigint NOT NULL REFERENCES venda(id) ON DELETE CASCADE,
+  forma    text NOT NULL,
+  valor    numeric(10,2) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_venda_pagamento_venda ON venda_pagamento (venda_id);
+
 CREATE TABLE IF NOT EXISTS casco (
   id                bigserial PRIMARY KEY,
   empresa_id        bigint NOT NULL DEFAULT 1,
