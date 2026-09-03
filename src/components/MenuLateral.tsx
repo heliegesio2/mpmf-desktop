@@ -13,7 +13,8 @@ const ITENS = [
   { href: "/vendas", rotulo: "Vendas do dia", descricao: "Histórico por data, valor e pagamento" },
   { href: "/produtos", rotulo: "Produtos", descricao: "Incluir, alterar, excluir" },
   { href: "/caixa", rotulo: "Caixa", descricao: "Valor final do dia" },
-  { href: "/gastos", rotulo: "Gastos", descricao: "Contas pagas da loja" },
+  { href: "/gastos", rotulo: "Investimentos", descricao: "O que a loja gastou/investiu" },
+  { href: "/anotacoes", rotulo: "Anotações", descricao: "Lembretes com data de alerta" },
 ];
 
 export default function MenuLateral() {
@@ -21,11 +22,19 @@ export default function MenuLateral() {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [contaAberta, setContaAberta] = useState(false);
+  const [alertasAnotacoes, setAlertasAnotacoes] = useState(0);
   const { itens: itensCarrinho } = useCarrinho();
 
   useEffect(() => {
     setAberto(false);
     setContaAberta(false);
+  }, [caminho]);
+
+  useEffect(() => {
+    fetch("/api/anotacoes/alertas")
+      .then((r) => (r.ok ? r.json() : { total: 0 }))
+      .then((d) => setAlertasAnotacoes(Number(d?.total) || 0))
+      .catch(() => setAlertasAnotacoes(0));
   }, [caminho]);
 
   async function trancar() {
@@ -118,7 +127,12 @@ export default function MenuLateral() {
         <div className="menu-grupos">
           {ITENS.map((p) => (
             <Link key={p.href} href={p.href} className="menu-item" data-ativo={caminho === p.href}>
-              <strong>{p.rotulo}</strong>
+              <strong>
+                {p.rotulo}
+                {p.href === "/anotacoes" && alertasAnotacoes > 0 && (
+                  <span className="menu-alerta">{alertasAnotacoes}</span>
+                )}
+              </strong>
               <span>{p.descricao}</span>
             </Link>
           ))}

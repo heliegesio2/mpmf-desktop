@@ -59,6 +59,12 @@ Sem testes, sem linter (eslint desligado no build).
   `transcricao_key`, e opcional `transcricao_url`/`_modelo`) ficam na tabela `config`, setadas
   na tela **Configurações** — `lerEstoqueVideo.ts` lê de lá (fallback pro `process.env`).
   `transcricaoConfigurada()` é **async** aqui (lê o config). Sem as chaves, a rota 503.
+- **Menu**: "Gastos" agora é **"Investimentos"** (rota/tabela seguem `/gastos`, `/api/custos`, `custo`).
+- **Anotações** (`/anotacoes`, espelha o web) — `anotacao(texto, data_alerta date null, concluida)` no
+  `schema.ts`. Cria com textarea + microfone + data opcional; conclui / edita a data inline / exclui.
+  `anotacoesEmAlerta` (open + `data_alerta <= CURRENT_DATE`) alimenta o badge vermelho no menu
+  (`GET /api/anotacoes/alertas`). O desktop **não tem cascos/empréstimos**, então a parte de "item
+  retirado" do web não se aplica aqui.
 
 ## Empacotamento (Electron)
 

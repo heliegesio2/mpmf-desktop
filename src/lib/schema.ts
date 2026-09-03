@@ -109,6 +109,17 @@ CREATE TABLE IF NOT EXISTS venda_pagamento (
 );
 CREATE INDEX IF NOT EXISTS idx_venda_pagamento_venda ON venda_pagamento (venda_id);
 
+-- anotacoes (lembretes com data de alerta)
+CREATE TABLE IF NOT EXISTS anotacao (
+  id          bigserial PRIMARY KEY,
+  empresa_id  bigint NOT NULL DEFAULT 1,
+  texto       text NOT NULL,
+  data_alerta date,
+  concluida   boolean NOT NULL DEFAULT false,
+  criado_em   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_anotacao_empresa ON anotacao (empresa_id, concluida, data_alerta);
+
 CREATE TABLE IF NOT EXISTS casco (
   id                bigserial PRIMARY KEY,
   empresa_id        bigint NOT NULL DEFAULT 1,

@@ -481,3 +481,90 @@ export async function gravarConfig(chave: string, valor: string | null): Promise
     [chave, valor]
   );
 }
+
+// ---------- anotacoes (lembretes com data de alerta) ----------
+
+export type Anotacao = {
+  id: number;
+  texto: string;
+  data_alerta: string | null;
+  concluida: boolean;
+  criado_em: string;
+};
+
+const CAMPOS_ANOTACAO = "id, texto, data_alerta::text AS data_alerta, concluida, criado_em";
+
+export async function listarAnotacoes(_empresaId: number, situacao?: string): Promise<Anotacao[]> {
+  const pool = await getPool();
+  const filtro =
+    situacao === "abertas" ? "AND concluida = false"
+    : situacao === "concluidas" ? "AND concluida = true"
+    : "";
+  const { rows } = await pool.query<Anotacao>(
+    `SELECT ${CAMPOS_ANOTACAO} FROM anotacao
+      WHERE empresa_id = $1 ${filtro}
+      ORDER BY concluida, (data_alerta IS NULL), data_alerta, criado_em DESC`,
+    [EMPRESA_ID]
+  );
+  return rows;
+}
+
+export async function criarAnotacao(
+  _empresaId: number,
+  texto: string,
+  dataAlerta: string | null
+): Promise<Anotacao> {
+  const pool = await getPool();
+  const { rows } = await pool.query<Anotacao>(
+    `INSERT INTO anotacao (empresa_id, texto, data_alerta)
+     VALUES ($1, $2, $3::date) RETURNING ${CAMPOS_ANOTACAO}`,
+    [EMPRESA_ID, texto, dataAlerta || null]
+  );
+  return rows[0];
+}
+
+export async function editarAnotacao(
+  _empresaId: number,
+  id: number,
+  campos: { concluida?: boolean; texto?: string; dataAlerta?: string | null }
+): Promise<Anotacao | null> {
+  const pool = await getPool();
+  const sets: string[] = [];
+  const vals: unknown[] = [id, EMPRESA_ID];
+  if (campos.concluida !== undefined) {
+    vals.push(campos.concluida);
+    sets.push(`concluida = $${vals.length}`);
+  }
+  if (campos.texto !== undefined) {
+    vals.push(campos.texto);
+    sets.push(`texto = $${vals.length}`);
+  }
+  if (campos.dataAlerta !== undefined) {
+    vals.push(campos.dataAlerta || null);
+    sets.push(`data_alerta = $${vals.length}::date`);
+  }
+  if (sets.length === 0) return null;
+  const { rows } = await pool.query<Anotacao>(
+    `UPDATE anotacao SET ${sets.join(", ")}
+      WHERE id = $1 AND empresa_id = $2 RETURNING ${CAMPOS_ANOTACAO}`,
+    vals
+  );
+  return rows[0] ?? null;
+}
+
+export async function excluirAnotacao(_empresaId: number, id: number): Promise<boolean> {
+  const pool = await getPool();
+  const r = await pool.query("DELETE FROM anotacao WHERE id = $1 AND empresa_id = $2", [id, EMPRESA_ID]);
+  return r.rowCount > 0;
+}
+
+export async function anotacoesEmAlerta(_empresaId: number): Promise<number> {
+  const pool = await getPool();
+  const { rows } = await pool.query<{ total: string }>(
+    `SELECT count(*)::int AS total FROM anotacao
+      WHERE empresa_id = $1 AND concluida = false
+        AND data_alerta IS NOT NULL AND data_alerta <= CURRENT_DATE`,
+    [EMPRESA_ID]
+  );
+  return Number(rows[0]?.total ?? 0);
+}
