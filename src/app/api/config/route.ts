@@ -15,6 +15,9 @@ export async function GET() {
     pix_chave: (await lerConfig("pix_chave")) ?? "",
     pix_nome: (await lerConfig("pix_nome")) ?? "",
     cidade: (await lerConfig("cidade")) ?? "",
+    // chaves de IA — nunca devolve o valor, só se está preenchida
+    tem_anthropic: Boolean((await lerConfig("anthropic_key"))?.trim()),
+    tem_transcricao: Boolean((await lerConfig("transcricao_key"))?.trim()),
   });
 }
 
@@ -29,6 +32,13 @@ export async function PUT(request: Request) {
   await gravarConfig("pix_chave", String(c.pix_chave ?? "").trim());
   await gravarConfig("pix_nome", String(c.pix_nome ?? "").trim());
   await gravarConfig("cidade", String(c.cidade ?? "").trim());
+
+  // chaves de IA: só grava quando vier preenchida; "__limpar__" apaga.
+  for (const k of ["anthropic_key", "transcricao_key"] as const) {
+    const v = String(c[k] ?? "").trim();
+    if (v === "__limpar__") await gravarConfig(k, "");
+    else if (v) await gravarConfig(k, v);
+  }
 
   return NextResponse.json({ ok: true });
 }

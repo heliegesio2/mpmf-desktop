@@ -51,6 +51,14 @@ Sem testes, sem linter (eslint desligado no build).
 - **Campo estoque**: o banco devolve `numeric` como `"3.000"`. `FormularioProduto` carrega
   `estoque` como `String(Number(p.estoque))` e manda de volta como **texto cru** — nunca
   `moedaParaNumero` (apaga o ponto: `"3.000"` → `3000`).
+- **`/produtos/estoque-video`** (espelha o web) — grava um vídeo (`<GravadorVideo>`,
+  `getUserMedia`+`MediaRecorder`, câmera traseira, quadros a cada 1,5 s), tira o áudio no
+  navegador (`audioCliente.ts` → WAV 16 kHz) → `POST /api/produtos/estoque-video` →
+  `lerEstoqueVideo.ts`: transcreve (Whisper compatível) + Claude interpreta
+  `{nome, quantidade|null, preco|null}`. **Precisa de internet.** As chaves (`anthropic_key`,
+  `transcricao_key`, e opcional `transcricao_url`/`_modelo`) ficam na tabela `config`, setadas
+  na tela **Configurações** — `lerEstoqueVideo.ts` lê de lá (fallback pro `process.env`).
+  `transcricaoConfigurada()` é **async** aqui (lê o config). Sem as chaves, a rota 503.
 
 ## Empacotamento (Electron)
 

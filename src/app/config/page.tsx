@@ -26,6 +26,12 @@ export default function Config() {
   const [avisoPin, setAvisoPin] = useState("");
   const [erroPin, setErroPin] = useState(false);
 
+  // chaves de IA (estoque por vídeo) — o GET só diz se estão configuradas
+  const [temAnthropic, setTemAnthropic] = useState(false);
+  const [temTranscricao, setTemTranscricao] = useState(false);
+  const [anthropicKey, setAnthropicKey] = useState("");
+  const [transcricaoKey, setTranscricaoKey] = useState("");
+
   const campo = (k: keyof Dados) => (v: string) => setD((x) => ({ ...x, [k]: v }));
 
   const { ouvir, parar, ouvindoCampo, campoAtual, disponivel } = useVoz({
@@ -51,6 +57,8 @@ export default function Config() {
         pix_nome: dados.pix_nome ?? "",
         cidade: dados.cidade ?? "",
       });
+      setTemAnthropic(Boolean(dados.tem_anthropic));
+      setTemTranscricao(Boolean(dados.tem_transcricao));
     } catch {
       setErro(true);
       setAviso("Não foi possível carregar as configurações.");
@@ -70,11 +78,18 @@ export default function Config() {
       const r = await fetch("/api/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(d),
+        body: JSON.stringify({
+          ...d,
+          ...(anthropicKey.trim() ? { anthropic_key: anthropicKey.trim() } : {}),
+          ...(transcricaoKey.trim() ? { transcricao_key: transcricaoKey.trim() } : {}),
+        }),
       });
       const dados = await r.json();
       if (!r.ok) throw new Error(dados?.erro ?? "Não foi possível salvar.");
       setAviso("Configurações salvas.");
+      setAnthropicKey("");
+      setTranscricaoKey("");
+      await carregar();
     } catch (e) {
       setErro(true);
       setAviso(e instanceof Error ? e.message : "Não foi possível salvar.");
@@ -187,6 +202,48 @@ export default function Config() {
         <p className="dica" data-erro={erro} role="status" aria-live="polite">
           {aviso}
         </p>
+      </section>
+
+      <section className="cartao">
+        <h2 className="titulo-cartao">Estoque por vídeo (precisa de internet)</h2>
+        <p className="ajuda-voz">
+          Pra usar “Atualizar estoque por vídeo” em Produtos. A transcrição usa a Groq
+          (console.groq.com — barato) e a leitura usa a Anthropic (console.anthropic.com).
+          As chaves ficam só neste computador.
+        </p>
+
+        <div className="grade-form">
+          <label className="rotulo largo">
+            Chave da Anthropic {temAnthropic && <span className="ok-config">✓ configurada</span>}
+            <span className="entrada">
+              <input
+                type="password"
+                value={anthropicKey}
+                onChange={(e) => setAnthropicKey(e.target.value)}
+                placeholder={temAnthropic ? "•••••••• (deixe em branco pra manter)" : "sk-ant-..."}
+                autoComplete="off"
+              />
+            </span>
+          </label>
+          <label className="rotulo largo">
+            Chave da transcrição (Groq) {temTranscricao && <span className="ok-config">✓ configurada</span>}
+            <span className="entrada">
+              <input
+                type="password"
+                value={transcricaoKey}
+                onChange={(e) => setTranscricaoKey(e.target.value)}
+                placeholder={temTranscricao ? "•••••••• (deixe em branco pra manter)" : "gsk_..."}
+                autoComplete="off"
+              />
+            </span>
+          </label>
+        </div>
+
+        <div className="acoes">
+          <button className="botao primario" onClick={salvar} disabled={salvando}>
+            {salvando ? "Salvando…" : "Salvar chaves"}
+          </button>
+        </div>
       </section>
 
       <section className="cartao">

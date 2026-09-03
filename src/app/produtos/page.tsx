@@ -217,6 +217,9 @@ export default function Produtos() {
         >
           {lendoFoto ? "Lendo a foto…" : "📷 Novo produto por foto"}
         </button>
+        <Link href="/produtos/estoque-video" className="botao neutro">
+          🎥 Atualizar estoque por vídeo
+        </Link>
         <input
           ref={fotoInput}
           type="file"
