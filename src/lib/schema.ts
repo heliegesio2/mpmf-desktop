@@ -109,6 +109,21 @@ CREATE TABLE IF NOT EXISTS venda_pagamento (
 );
 CREATE INDEX IF NOT EXISTS idx_venda_pagamento_venda ON venda_pagamento (venda_id);
 
+-- log de vendas excluídas (quem, quando, snapshot)
+CREATE TABLE IF NOT EXISTS venda_exclusao (
+  id             bigserial PRIMARY KEY,
+  empresa_id     bigint NOT NULL,
+  venda_id       bigint NOT NULL,
+  venda_data     date,
+  venda_criado_em timestamptz,
+  total          numeric(10,2) NOT NULL DEFAULT 0,
+  itens          jsonb NOT NULL DEFAULT '[]',
+  pagamentos     jsonb NOT NULL DEFAULT '[]',
+  usuario_id     bigint,
+  usuario_nome   text NOT NULL,
+  excluido_em    timestamptz NOT NULL DEFAULT now()
+);
+
 -- anotacoes (lembretes com data de alerta)
 CREATE TABLE IF NOT EXISTS anotacao (
   id          bigserial PRIMARY KEY,

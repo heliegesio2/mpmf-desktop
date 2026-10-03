@@ -342,6 +342,53 @@ export async function listarVendas(
   return rows;
 }
 
+export type ResultadoExclusaoVenda = "ok" | "nao_encontrada";
+
+/**
+ * Exclui uma venda: grava snapshot + quem excluiu em `venda_exclusao`,
+ * devolve o estoque baixado e apaga a venda. O fiado lançado não é desfeito.
+ */
+export async function excluirVenda(
+  _empresaId: number,
+  vendaId: number,
+  usuario: { id: number; nome: string }
+): Promise<ResultadoExclusaoVenda> {
+  const pool = await getPool();
+  const { rows: log } = await pool.query(
+    `INSERT INTO venda_exclusao
+       (empresa_id, venda_id, venda_data, venda_criado_em, total, itens, pagamentos, usuario_id, usuario_nome)
+     SELECT v.empresa_id, v.id, v.data, v.criado_em, v.total,
+            COALESCE((SELECT json_agg(json_build_object(
+                        'produto_id', i.produto_id, 'nome', i.nome,
+                        'quantidade', i.quantidade::float8, 'preco_unit', i.preco_unit::float8,
+                        'tipo_venda', i.tipo_venda) ORDER BY i.id)
+                       FROM venda_item i WHERE i.venda_id = v.id), '[]'::json),
+            COALESCE((SELECT json_agg(json_build_object('forma', p.forma, 'valor', p.valor::float8) ORDER BY p.id)
+                       FROM venda_pagamento p WHERE p.venda_id = v.id), '[]'::json),
+            $3, $4
+       FROM venda v
+      WHERE v.id = $1 AND v.empresa_id = $2
+     RETURNING id`,
+    [vendaId, EMPRESA_ID, usuario.id, usuario.nome.slice(0, 200)]
+  );
+  if (log.length === 0) return "nao_encontrada";
+
+  const { rows: itens } = await pool.query<{ produto_id: number | null; quantidade: string }>(
+    "SELECT produto_id, quantidade FROM venda_item WHERE venda_id = $1",
+    [vendaId]
+  );
+  for (const it of itens) {
+    if (it.produto_id == null) continue;
+    await pool.query(
+      `UPDATE produto SET estoque = estoque + $3, alterado_em = now()
+        WHERE id = $1 AND empresa_id = $2`,
+      [it.produto_id, EMPRESA_ID, Number(it.quantidade)]
+    );
+  }
+  await pool.query("DELETE FROM venda WHERE id = $1 AND empresa_id = $2", [vendaId, EMPRESA_ID]);
+  return "ok";
+}
+
 export async function fotoProduto(_empresaId: number, id: number): Promise<string | null> {
   const pool = await getPool();
   const { rows } = await pool.query<{ foto: string | null }>(
