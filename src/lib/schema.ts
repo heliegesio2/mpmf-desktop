@@ -123,6 +123,9 @@ CREATE TABLE IF NOT EXISTS venda_exclusao (
   usuario_nome   text NOT NULL,
   excluido_em    timestamptz NOT NULL DEFAULT now()
 );
+-- fiado ligado à venda que o gerou (excluído junto) + snapshot no log
+ALTER TABLE fiado ADD COLUMN IF NOT EXISTS venda_id bigint;
+ALTER TABLE venda_exclusao ADD COLUMN IF NOT EXISTS fiados jsonb NOT NULL DEFAULT '[]';
 
 -- anotacoes (lembretes com data de alerta)
 CREATE TABLE IF NOT EXISTS anotacao (

@@ -346,7 +346,7 @@ export type ResultadoExclusaoVenda = "ok" | "nao_encontrada";
 
 /**
  * Exclui uma venda: grava snapshot + quem excluiu em `venda_exclusao`,
- * devolve o estoque baixado e apaga a venda. O fiado lançado não é desfeito.
+ * devolve o estoque baixado e apaga a venda (e o fiado ligado a ela, se houver).
  */
 export async function excluirVenda(
   _empresaId: number,
@@ -356,7 +356,7 @@ export async function excluirVenda(
   const pool = await getPool();
   const { rows: log } = await pool.query(
     `INSERT INTO venda_exclusao
-       (empresa_id, venda_id, venda_data, venda_criado_em, total, itens, pagamentos, usuario_id, usuario_nome)
+       (empresa_id, venda_id, venda_data, venda_criado_em, total, itens, pagamentos, fiados, usuario_id, usuario_nome)
      SELECT v.empresa_id, v.id, v.data, v.criado_em, v.total,
             COALESCE((SELECT json_agg(json_build_object(
                         'produto_id', i.produto_id, 'nome', i.nome,
@@ -365,6 +365,10 @@ export async function excluirVenda(
                        FROM venda_item i WHERE i.venda_id = v.id), '[]'::json),
             COALESCE((SELECT json_agg(json_build_object('forma', p.forma, 'valor', p.valor::float8) ORDER BY p.id)
                        FROM venda_pagamento p WHERE p.venda_id = v.id), '[]'::json),
+            COALESCE((SELECT json_agg(json_build_object(
+                        'cliente', cl.nome, 'valor', f.valor::float8, 'pago', f.pago) ORDER BY f.id)
+                       FROM fiado f JOIN cliente cl ON cl.id = f.cliente_id
+                      WHERE f.venda_id = v.id AND f.empresa_id = v.empresa_id), '[]'::json),
             $3, $4
        FROM venda v
       WHERE v.id = $1 AND v.empresa_id = $2
@@ -385,6 +389,7 @@ export async function excluirVenda(
       [it.produto_id, EMPRESA_ID, Number(it.quantidade)]
     );
   }
+  await pool.query("DELETE FROM fiado WHERE venda_id = $1 AND empresa_id = $2", [vendaId, EMPRESA_ID]);
   await pool.query("DELETE FROM venda WHERE id = $1 AND empresa_id = $2", [vendaId, EMPRESA_ID]);
   return "ok";
 }
@@ -397,6 +402,7 @@ export type ExclusaoVenda = {
   total: number;
   itens: { nome: string; quantidade: number; preco_unit: number; tipo_venda: string }[];
   pagamentos: { forma: string; valor: number }[];
+  fiados: { cliente: string; valor: number; pago: boolean }[];
   usuario_nome: string;
   excluido_em: string;
 };
@@ -406,7 +412,7 @@ export async function listarExclusoesVenda(_empresaId: number): Promise<Exclusao
   const pool = await getPool();
   const { rows } = await pool.query<ExclusaoVenda>(
     `SELECT id, venda_id, venda_data::text AS venda_data, venda_criado_em, total::float8 AS total,
-            itens, pagamentos, usuario_nome, excluido_em
+            itens, pagamentos, fiados, usuario_nome, excluido_em
        FROM venda_exclusao
       WHERE empresa_id = $1
       ORDER BY excluido_em DESC
