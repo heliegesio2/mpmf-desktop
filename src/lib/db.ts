@@ -389,6 +389,33 @@ export async function excluirVenda(
   return "ok";
 }
 
+export type ExclusaoVenda = {
+  id: number;
+  venda_id: number;
+  venda_data: string | null;
+  venda_criado_em: string | null;
+  total: number;
+  itens: { nome: string; quantidade: number; preco_unit: number; tipo_venda: string }[];
+  pagamentos: { forma: string; valor: number }[];
+  usuario_nome: string;
+  excluido_em: string;
+};
+
+/** Log de vendas excluídas da empresa, mais recentes primeiro (até 200). */
+export async function listarExclusoesVenda(_empresaId: number): Promise<ExclusaoVenda[]> {
+  const pool = await getPool();
+  const { rows } = await pool.query<ExclusaoVenda>(
+    `SELECT id, venda_id, venda_data::text AS venda_data, venda_criado_em, total::float8 AS total,
+            itens, pagamentos, usuario_nome, excluido_em
+       FROM venda_exclusao
+      WHERE empresa_id = $1
+      ORDER BY excluido_em DESC
+      LIMIT 200`,
+    [EMPRESA_ID]
+  );
+  return rows;
+}
+
 export async function fotoProduto(_empresaId: number, id: number): Promise<string | null> {
   const pool = await getPool();
   const { rows } = await pool.query<{ foto: string | null }>(
